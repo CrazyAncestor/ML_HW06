@@ -246,6 +246,18 @@ def main(args):
     embedding = preprocess.get_embedding(load=False)
     # Get word indices
     data, label = preprocess.get_indices()
+    # Split train and validation set and create data loader
+    # TODO
+    train_loader = None
+    val_loader = None
+    # Get model
+    model = LSTM_Net(embedding, args.word_dim, args.hidden_dim, args.num_layers)
+    model = model.to(device)
+    if not os.path.exists(args.model_dir):
+        os.mkdir(args.model_dir)
+    # Start training
+    training(args, train_loader, val_loader, model, device)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
