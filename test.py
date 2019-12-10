@@ -6,6 +6,7 @@ import argparse
 from multiprocessing import Pool
 
 # optional library
+import numpy as np
 import jieba
 import pandas as pd
 from gensim.models import Word2Vec
@@ -15,6 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
 
 class Preprocess():
     def __init__(self, data_dir, label_dir, args):
@@ -188,6 +190,57 @@ def evaluation(outputs, labels):
     correct = torch.sum(torch.eq(outputs, labels)).item()
     return correct
 
+def tester(data,label):
+    for i in range(100):
+        data.append(i)
+        label.append(i)
+    
+    return torch.LongTensor(data), torch.LongTensor(label)
+
+def pr(data,label):
+    print(len(data))
+    print(len(label))
+    for i in range(100):
+        print(data[i])
+        print(label[i])
+
+
+def spilt(data,label,batch_size):
+    print("Spliting data...")
+    x_train = []
+    x_label = []
+    val_data = []
+    val_label = []
+
+    
+    for i in range(len(label)):
+        
+        if (i % 10 == 0):
+            val_data.append(data[i])
+            val_label.append(label[i])
+        else:
+            x_train.append(data[i])
+            x_label.append(label[i])
+
+    x_train = np.array(x_train, dtype=float) / (batch_size-1.0)
+    val_data = np.array(val_data, dtype=float) / (batch_size-1.0)
+    x_label = np.array(x_label, dtype=int)
+    val_label = np.array(val_label, dtype=int)
+
+    x_train = torch.LongTensor(x_train)
+    val_data = torch.LongTensor(val_data)
+    x_label = torch.LongTensor(x_label)
+    val_label = torch.LongTensor(val_label)
+
+    train_set = TensorDataset(x_train, x_label)
+    val_set = TensorDataset(val_data, val_label)
+
+    #batch_size = 256
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=8)
+    return train_loader, val_loader
+
+
 def training(args, train, valid, model, device):
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -246,10 +299,16 @@ def main(args):
     embedding = preprocess.get_embedding(load=False)
     # Get word indices
     data, label = preprocess.get_indices()
+    
     # Split train and validation set and create data loader
     # TODO
-    train_loader = None
-    val_loader = None
+    batch_size = args.batch
+    """data = []
+    label = []
+    tester(data,label)
+    batch_size = 1"""
+    train_loader, val_loader= spilt(data,label,batch_size)
+    #pr(data,label)
     # Get model
     model = LSTM_Net(embedding, args.word_dim, args.hidden_dim, args.num_layers)
     model = model.to(device)
