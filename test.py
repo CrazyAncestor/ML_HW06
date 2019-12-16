@@ -99,32 +99,54 @@ class Preprocess():
         self.index2word.append(word)
         self.vectors = torch.cat([self.vectors, vector], 0)
 
-    def get_indices(self,test=False):
+    def get_indices(self):
+        test=False
         # Transform each words to indices
         # e.g. if 機器=0,學習=1,好=2,玩=3 
         # [機器,學習,好,好,玩] => [0, 1, 2, 2,3]
         all_indices = []
         # Use tokenized data
-        for i, sentence in enumerate(self.data):
-            print('=== sentence count #{}'.format(i+1), end='\r')
-            sentence_indices = []
-            for word in sentence:
-                # if word in word2index append word index into sentence_indices
-                # if word not in word2index append unk index into sentence_indices
-                # TODO
-                flag=0
-                                
-                for wd in self.index2word:
-                    if wd == word:
-                        flag=1
-                if flag==1:
-                    sentence_indices.append(self.word2index[word])
-                else :
-                    w="<UNK>"
-                    sentence_indices.append(self.word2index[w])
-            # pad all sentence to fixed length
-            sentence_indices = self.pad_to_len(sentence_indices, self.seq_len, self.word2index[self.pad])
-            all_indices.append(sentence_indices)
+        if(os.path.exists("Indices")):
+            print("Con")
+            file2=open("Indices","r")
+            lines = file2.readlines()
+            for line in lines:
+                a = line.split(" ")
+                ele = []
+                for i in range(len(a)-1):
+                    ele.append(int(a[i]))
+                if len(ele)!=0:
+                    all_indices.append(ele)
+            file2.close()
+            
+
+        else:
+            file=open("Indices","w")
+            for i, sentence in enumerate(self.data):
+                print('=== sentence count #{}'.format(i+1), end='\r')
+                sentence_indices = []
+                for word in sentence:
+                    # if word in word2index append word index into sentence_indices
+                    # if word not in word2index append unk index into sentence_indices
+                    # TODO
+                    flag=0
+                                    
+                    for wd in self.index2word:
+                        if wd == word:
+                            flag=1
+                    if flag==1:
+                        sentence_indices.append(self.word2index[word])
+                    else :
+                        w="<UNK>"
+                        sentence_indices.append(self.word2index[w])
+                # pad all sentence to fixed length
+                sentence_indices = self.pad_to_len(sentence_indices, self.seq_len, self.word2index[self.pad])
+                all_indices.append(sentence_indices)
+                for k in range(len(sentence_indices)):
+                    file.write(str(sentence_indices[k]))
+                    file.write(" ")
+                file.write("\n")
+            
         if test:
             return torch.LongTensor(all_indices)         
         else:
@@ -222,8 +244,8 @@ def spilt(data,label,batch_size):
             x_train.append(data[i])
             x_label.append(label[i])
 
-    x_train = np.array(x_train, dtype=float) / (batch_size-1.0)
-    val_data = np.array(val_data, dtype=float) / (batch_size-1.0)
+    x_train = [np.array(t, dtype=float) / (batch_size-1.0) for t in x_train]
+    val_data = [np.array(t, dtype=float) / (batch_size-1.0) for t in val_data]
     x_label = np.array(x_label, dtype=int)
     val_label = np.array(val_label, dtype=int)
 
@@ -298,15 +320,13 @@ def main(args):
     # Get word embedding vectors
     embedding = preprocess.get_embedding(load=False)
     # Get word indices
+    
     data, label = preprocess.get_indices()
     
     # Split train and validation set and create data loader
     # TODO
     batch_size = args.batch
-    """data = []
-    label = []
-    tester(data,label)
-    batch_size = 1"""
+    
     train_loader, val_loader= spilt(data,label,batch_size)
     #pr(data,label)
     # Get model
